@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STUDY.OS — مركز القيادة الدراسي</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Tajawal:wght@300;400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+:root {
+  --bg:      #050508;
+  --panel:   #080c14;
+  --panel2:  #0a0f1a;
+  --border:  #0f1a2e;
+  --border2: #162236;
+  --neon-g:  #00ff88;
+  --neon-g2: #00cc66;
+  --neon-g3: #003322;
+  --neon-b:  #00b4ff;
+  --neon-b2: #0077cc;
+  --neon-b3: #001833;
+  --neon-o:  #ff7700;
+  --neon-r:  #ff2244;
+  --neon-y:  #ffcc00;
+  --neon-p:  #cc44ff;
+  --text:    #c8d8f0;
+  --muted:   #3a5070;
+  --dim:     #1a2a3a;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:var(--bg);color:var(--text);font-family:'Tajawal',sans-serif;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,136,.012) 2px,rgba(0,255,136,.012) 4px);pointer-events:none;z-index:1000;}
+.corner{position:fixed;width:36px;height:36px;pointer-events:none;z-index:999;}
+.c-tl{top:8px;right:8px;border-top:1px solid var(--neon-g);border-right:1px solid var(--neon-g);}
+.c-tr{top:8px;left:8px;border-top:1px solid var(--neon-g);border-left:1px solid var(--neon-g);}
+.c-bl{bottom:8px;right:8px;border-bottom:1px solid var(--neon-b);border-right:1px solid var(--neon-b);}
+.c-br{bottom:8px;left:8px;border-bottom:1px solid var(--neon-b);border-left:1px solid var(--neon-b);}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border2);background:linear-gradient(180deg,#06090f 0%,transparent 100%);position:sticky;top:0;z-index:100;}
+.logo{font-family:'Orbitron';font-size:1rem;font-weight:900;color:var(--neon-g);text-shadow:0 0 12px #00ff8866;letter-spacing:4px;}
+.logo span{color:var(--neon-b);text-shadow:0 0 12px #00b4ff66;}
+.nav-tabs{display:flex;gap:1px;}
+.ntab{font-family:'Orbitron';font-size:0.55rem;letter-spacing:2px;padding:7px 16px;border:1px solid var(--border2);background:var(--panel);color:var(--muted);cursor:pointer;transition:all .15s;}
+.ntab:hover{color:var(--text);border-color:var(--dim);}
+.ntab.active{background:var(--neon-g3);border-color:var(--neon-g2);color:var(--neon-g);box-shadow:0 0 12px #00ff8822;}
+.clock{font-family:'Share Tech Mono';font-size:0.7rem;color:var(--neon-b);}
+
+/* ── VIEWS ── */
+.view{display:none;padding:16px 20px;}
+.view.active{display:block;}
+
+/* ── SECTION LABEL ── */
+.sec-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.sec-title{font-family:'Orbitron';font-size:0.6rem;font-weight:700;letter-spacing:4px;color:var(--muted);text-transform:uppercase;}
+.sec-line{flex:1;height:1px;background:linear-gradient(90deg,var(--border2),transparent);}
+.sec-badge{font-family:'Share Tech Mono';font-size:0.55rem;padding:2px 8px;border:1px solid var(--neon-g2);color:var(--neon-g);}
+
+/* ── SUBJECTS GRID (tracker view) ── */
+.subjects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:28px;}
+
+.subject-card{background:var(--panel);border:1px solid var(--border2);padding:0;overflow:hidden;position:relative;transition:border-color .2s;}
+.subject-card:hover{border-color:var(--dim);}
+.sc-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 10px;cursor:pointer;border-bottom:1px solid var(--border2);}
+.sc-left{display:flex;align-items:center;gap:10px;}
+.sc-color{width:3px;height:36px;flex-shrink:0;}
+.sc-name{font-size:0.95rem;font-weight:900;letter-spacing:-0.3px;}
+.sc-right{display:flex;align-items:center;gap:12px;}
+.sc-pct{font-family:'Orbitron';font-size:1.1rem;font-weight:700;}
+.sc-counts{font-family:'Share Tech Mono';font-size:0.6rem;color:var(--muted);text-align:center;}
+.sc-chevron{color:var(--muted);font-size:0.65rem;transition:transform .2s;}
+.subject-card.open .sc-chevron{transform:rotate(180deg);}
+
+.sc-bar-track{height:3px;background:var(--border);}
+.sc-bar-fill{height:100%;transition:width .5s cubic-bezier(.25,1,.5,1);}
+
+.sc-body{display:none;padding:12px 14px;}
+.subject-card.open .sc-body{display:block;}
+
+/* Weekly info strip */
+.sc-weekly{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;}
+.sc-stat{background:var(--bg);border:1px solid var(--border2);padding:6px 8px;text-align:center;}
+.sc-stat-n{font-family:'Share Tech Mono';font-size:0.85rem;font-weight:700;}
+.sc-stat-l{font-size:0.6rem;color:var(--muted);margin-top:1px;}
+
+/* Filter tabs */
+.ftabs{display:flex;gap:0;margin-bottom:10px;border:1px solid var(--border2);}
+.ft{padding:6px 12px;font-size:0.65rem;font-weight:700;letter-spacing:1px;color:var(--muted);cursor:pointer;border-left:1px solid var(--border2);background:var(--panel2);transition:all .15s;font-family:'Tajawal';}
+.ft:first-child{border-left:none;}
+.ft.active{background:var(--neon-g3);color:var(--neon-g);border-color:var(--neon-g2);}
+
+/* Lecture grid */
+.lec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1px;background:var(--border2);border:1px solid var(--border2);}
+.lc{background:#070c14;padding:10px 10px 8px;cursor:pointer;transition:background .1s;user-select:none;}
+.lc:hover{background:#0d1520;}
+.lc.done{background:#071209;}
+.lc-n{font-size:0.55rem;font-weight:700;color:var(--muted);letter-spacing:2px;margin-bottom:4px;font-family:'Share Tech Mono';}
+.lc.done .lc-n{color:var(--neon-g);}
+.lc-name{font-size:0.75rem;font-weight:700;color:#7090b0;line-height:1.35;margin-bottom:7px;}
+.lc.done .lc-name{color:var(--text);}
+.lc-foot{display:flex;align-items:center;justify-content:space-between;}
+.chk{width:14px;height:14px;border:1px solid #1a2a3a;display:flex;align-items:center;justify-content:center;font-size:8px;}
+.lc.done .chk{background:var(--neon-g);border-color:var(--neon-g);color:#000;}
+.note-btn{background:none;border:none;color:#1a2a3a;cursor:pointer;font-size:10px;line-height:1;padding:1px;}
+.note-btn:hover,.note-btn.on{color:var(--neon-o);}
+.lc-stars{font-size:0.5rem;color:var(--neon-y);}
+
+/* add lecture row */
+.add-lec-row{display:flex;gap:0;margin-top:10px;border:1px solid var(--border2);}
+.ali{flex:1;background:#060a12;border:none;color:var(--text);padding:7px 10px;font-family:'Tajawal';font-size:0.78rem;outline:none;}
+.ali::placeholder{color:var(--muted);}
+.ali:focus{background:#0a1020;}
+.ali.num{width:80px;flex:none;border-right:1px solid var(--border2);color:var(--neon-g);font-family:'Share Tech Mono';text-align:center;}
+.alb{background:var(--neon-g3);border:none;border-right:1px solid var(--neon-g2);color:var(--neon-g);font-size:0.9rem;width:30px;cursor:pointer;transition:all .15s;}
+.alb:hover{box-shadow:0 0 8px #00ff8844;}
+
+/* add subject row */
+.add-subject-row{display:flex;gap:0;border:1px solid var(--border2);margin-bottom:20px;flex-wrap:wrap;}
+.asi{flex:1;min-width:120px;background:#060a12;border:none;border-left:1px solid var(--border2);color:var(--text);padding:10px 12px;font-family:'Tajawal';font-size:0.85rem;outline:none;}
+.asi::placeholder{color:var(--muted);}
+.asi:focus{background:#0a1020;}
+.asi.num{width:80px;flex:none;color:var(--neon-g);font-family:'Share Tech Mono';text-align:center;}
+.asb{background:var(--neon-g3);border:none;color:var(--neon-g);font-family:'Tajawal';font-size:0.85rem;font-weight:900;padding:10px 18px;cursor:pointer;white-space:nowrap;letter-spacing:1px;}
+.asb:hover{background:rgba(0,255,136,.15);box-shadow:0 0 12px #00ff8833;}
+
+/* empty state */
+.empty-state{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty-state .ico{font-size:2.5rem;margin-bottom:10px;}
+.empty-state p{font-size:0.82rem;line-height:1.7;color:#2a3a4a;}
+
+/* ── XP STRIP ── */
+.xp-strip{display:flex;align-items:center;gap:12px;padding:8px 20px;border-top:1px solid var(--border2);background:var(--panel);position:sticky;bottom:0;z-index:99;}
+.lv-badge{font-family:'Orbitron';font-size:0.65rem;font-weight:900;color:#000;background:var(--neon-y);padding:3px 8px;white-space:nowrap;}
+.xp-label{font-family:'Orbitron';font-size:0.5rem;letter-spacing:3px;color:var(--neon-y);white-space:nowrap;}
+.xp-track{flex:1;height:6px;background:var(--border2);overflow:hidden;}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--neon-b2),var(--neon-y),var(--neon-g));background-size:200%;animation:xpf 3s linear infinite;transition:width 1s;}
+@keyframes xpf{0%{background-position:0%}100%{background-position:200%}}
+.xp-nums{font-family:'Share Tech Mono';font-size:0.62rem;color:var(--neon-y);white-space:nowrap;}
+
+/* ── SCHEDULE VIEW ── */
+.sched-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+@media(max-width:700px){.sched-grid{grid-template-columns:1fr;}}
+
+.sched-card{background:var(--panel);border:1px solid var(--border2);overflow:hidden;}
+.sched-card-title{font-family:'Orbitron';font-size:0.55rem;letter-spacing:3px;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:8px;}
+.sched-card-title::before{content:'';width:4px;height:4px;background:var(--neon-b);box-shadow:0 0 6px var(--neon-b);}
+
+.sched-table{width:100%;border-collapse:collapse;}
+.sched-table th{font-family:'Orbitron';font-size:0.5rem;letter-spacing:2px;color:var(--muted);padding:7px 10px;border-bottom:1px solid var(--border2);text-align:right;font-weight:400;}
+.sched-table td{font-size:0.78rem;padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);text-align:right;vertical-align:top;}
+.sched-table tr:last-child td{border-bottom:none;}
+.sched-table tr:hover td{background:rgba(0,180,255,.03);}
+.sched-table .day-cell{font-weight:900;font-size:0.82rem;}
+.today-row td{background:rgba(0,255,136,.04) !important;}
+.today-row .day-cell{color:var(--neon-g);text-shadow:0 0 8px #00ff8844;}
+
+.slot-pill{display:inline-block;padding:2px 7px;font-size:0.68rem;font-weight:700;border:1px solid;margin:1px;white-space:nowrap;}
+.pill-m{background:rgba(0,255,136,.08);border-color:var(--neon-g3);color:var(--neon-g);}
+.pill-bio{background:rgba(204,68,255,.08);border-color:#441166;color:var(--neon-p);}
+.pill-phys{background:rgba(0,180,255,.08);border-color:var(--neon-b3);color:var(--neon-b);}
+.pill-chem{background:rgba(255,119,0,.08);border-color:#331100;color:var(--neon-o);}
+.pill-arab-g{background:rgba(255,204,0,.08);border-color:#332200;color:var(--neon-y);}
+.pill-arab-l{background:rgba(255,34,68,.08);border-color:#330011;color:var(--neon-r);}
+.pill-isl{background:rgba(0,255,136,.05);border-color:#002211;color:#66ffaa;}
+.pill-eng{background:rgba(100,100,255,.08);border-color:#111133;color:#aaaaff;}
+.pill-exam{background:rgba(255,34,68,.15);border-color:var(--neon-r);color:var(--neon-r);animation:pulse .8s infinite alternate;}
+.pill-review{background:rgba(255,204,0,.06);border-color:#332200;color:var(--neon-y);}
+.pill-rest{background:#0a0a0a;border-color:var(--border2);color:var(--muted);}
+@keyframes pulse{from{opacity:.7}to{opacity:1}}
+
+/* Distribution table */
+.dist-table{width:100%;border-collapse:collapse;}
+.dist-table th{font-family:'Orbitron';font-size:0.5rem;letter-spacing:2px;color:var(--muted);padding:7px 10px;border-bottom:1px solid var(--border2);text-align:right;font-weight:400;}
+.dist-table td{font-size:0.78rem;padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);text-align:right;}
+.dist-table tr:last-child td{border-bottom:none;font-weight:900;color:var(--neon-g);}
+.dist-bar{display:flex;align-items:center;gap:6px;}
+.dist-mini{flex:1;height:4px;background:var(--border2);max-width:80px;}
+.dist-mini-fill{height:100%;background:var(--neon-g);transition:width .6s;}
+.target-num{font-family:'Share Tech Mono';font-size:0.75rem;}
+.done-num{font-family:'Share Tech Mono';font-size:0.75rem;color:var(--neon-g);}
+
+/* Daily schedule */
+.daily-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;}
+.time-slot{background:var(--panel);border:1px solid var(--border2);display:flex;align-items:stretch;overflow:hidden;}
+.ts-time{background:#050a10;border-left:1px solid var(--border2);padding:10px 8px;font-family:'Share Tech Mono';font-size:0.6rem;color:var(--neon-b);white-space:nowrap;display:flex;align-items:center;}
+.ts-act{padding:10px 12px;font-size:0.78rem;font-weight:700;display:flex;align-items:center;}
+
+/* Timeline view */
+.timeline{position:relative;padding-right:20px;}
+.timeline::before{content:'';position:absolute;right:4px;top:0;bottom:0;width:1px;background:linear-gradient(180deg,var(--neon-g3),var(--neon-b3));}
+.tl-item{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px;position:relative;}
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;position:relative;z-index:1;}
+.tl-body{flex:1;background:var(--panel);border:1px solid var(--border2);padding:10px 14px;}
+.tl-period{font-family:'Share Tech Mono';font-size:0.6rem;color:var(--neon-b);margin-bottom:4px;}
+.tl-act{font-size:0.82rem;font-weight:700;}
+.tl-sub{font-size:0.7rem;color:var(--muted);margin-top:3px;}
+
+/* Rules */
+.rule-card{background:var(--panel);border-right:3px solid var(--neon-o);border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);border-left:1px solid var(--border2);padding:12px 16px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;}
+.rule-num{font-family:'Orbitron';font-size:1rem;font-weight:900;color:var(--neon-o);flex-shrink:0;text-shadow:0 0 10px #ff770066;}
+.rule-text{font-size:0.82rem;line-height:1.6;color:#8aa0c0;}
+.rule-text strong{color:var(--text);}
+
+/* ── ANALYTICS VIEW ── */
+.analytics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:20px;}
+.an-card{background:var(--panel);border:1px solid var(--border2);padding:14px;}
+.an-title{font-family:'Orbitron';font-size:0.5rem;letter-spacing:3px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.an-title::before{content:'';width:4px;height:4px;background:var(--neon-g);box-shadow:0 0 6px var(--neon-g);}
+
+/* ── MODAL ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:999;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:#0a0e16;border:1px solid #1a2a3a;padding:24px;width:90%;max-width:380px;animation:mIn .18s ease;}
+@keyframes mIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.modal-title{font-size:1.1rem;font-weight:900;margin-bottom:18px;letter-spacing:-.3px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:0.58rem;font-weight:900;letter-spacing:3px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;}
+.field input,.field textarea{width:100%;background:#060a12;border:1px solid var(--border2);padding:9px 12px;color:var(--text);font-family:'Tajawal';font-size:0.85rem;outline:none;}
+.field input:focus,.field textarea:focus{border-color:var(--neon-g);}
+.field textarea{resize:vertical;min-height:70px;}
+.stars-r{display:flex;gap:5px;font-size:1.2rem;cursor:pointer;}
+.star{color:#1a2a3a;transition:color .1s;}
+.star.lit{color:var(--neon-y);}
+.modal-btns{display:flex;border:1px solid var(--border2);margin-top:18px;}
+.mb{flex:1;padding:10px;border:none;border-left:1px solid var(--border2);font-family:'Tajawal';font-size:0.82rem;font-weight:900;cursor:pointer;letter-spacing:1px;}
+.mb:first-child{border-left:none;}
+.mb.p{background:var(--neon-g3);color:var(--neon-g);}
+.mb.p:hover{box-shadow:0 0 10px #00ff8833;}
+.mb.g{background:#080c14;color:var(--muted);}
+.mb.g:hover{background:#0f1520;color:var(--text);}
+
+/* Toast */
+.toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%) translateY(50px);background:#081408;border:1px solid var(--neon-g2);color:var(--neon-g);font-family:'Orbitron';font-size:0.6rem;letter-spacing:2px;padding:9px 18px;z-index:9999;box-shadow:0 0 20px #00ff8822;transition:transform .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:var(--border2);}
+
+/* tabs colors per subject */
+.clr-0{color:#00ff88;} .clr-1{color:#00b4ff;} .clr-2{color:#cc44ff;}
+.clr-3{color:#ff7700;} .clr-4{color:#ffcc00;} .clr-5{color:#ff2244;}
+.clr-6{color:#00ffcc;} .clr-7{color:#aaaaff;}
+.bg-0{background:rgba(0,255,136,.08);border-color:#003322;}
+.bg-1{background:rgba(0,180,255,.08);border-color:#001833;}
+.bg-2{background:rgba(204,68,255,.08);border-color:#220033;}
+.bg-3{background:rgba(255,119,0,.08);border-color:#331100;}
+.bg-4{background:rgba(255,204,0,.08);border-color:#332200;}
+.bg-5{background:rgba(255,34,68,.08);border-color:#330011;}
+.bg-6{background:rgba(0,255,204,.08);border-color:#003322;}
+.bg-7{background:rgba(170,170,255,.08);border-color:#111133;}
+
+/* ── SUBJECT PAGE ── */
+.page{display:none;padding:16px 20px;animation:pgIn .2s ease;}
+.page.active{display:block;}
+@keyframes pgIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+
+.back-btn{display:inline-flex;align-items:center;gap:8px;font-family:'Orbitron';font-size:0.55rem;letter-spacing:2px;color:var(--neon-b);border:1px solid var(--neon-b3);background:#020810;padding:7px 14px;cursor:pointer;margin-bottom:16px;transition:all .15s;}
+.back-btn:hover{border-color:var(--neon-b2);box-shadow:0 0 10px #00b4ff22;}
+
+.sub-page-header{background:var(--panel);border:1px solid var(--border2);padding:18px 20px;margin-bottom:16px;position:relative;overflow:hidden;}
+.sub-page-header::before{content:'';position:absolute;top:0;right:0;width:200px;height:100%;background:radial-gradient(ellipse at right,rgba(0,255,136,.06),transparent 70%);pointer-events:none;}
+.sub-page-title{font-size:1.8rem;font-weight:900;letter-spacing:-1px;margin-bottom:6px;}
+.sub-page-meta{font-family:'Share Tech Mono';font-size:0.65rem;color:var(--muted);}
+.sub-page-bar{height:4px;margin-top:14px;background:var(--border2);}
+.sub-page-bar-fill{height:100%;transition:width .6s cubic-bezier(.25,1,.5,1);}
+
+.sub-page-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+.sps{background:var(--panel);border:1px solid var(--border2);padding:14px;text-align:center;}
+.sps-n{font-family:'Orbitron';font-size:1.6rem;font-weight:700;line-height:1;}
+.sps-l{font-size:0.65rem;color:var(--muted);margin-top:4px;letter-spacing:1px;}
+
+.sub-page-actions{display:flex;gap:0;border:1px solid var(--border2);margin-bottom:12px;flex-wrap:wrap;}
+.spa{background:#060a12;border:none;border-left:1px solid var(--border2);color:var(--muted);font-family:'Tajawal';font-size:0.78rem;font-weight:700;padding:9px 14px;cursor:pointer;transition:all .1s;}
+.spa:first-child{border-left:none;}
+.spa:hover{background:#0d1520;color:var(--text);}
+.spa.gn:hover{color:var(--neon-g);}
+.spa.rd:hover{color:var(--neon-r);}
+.spa.bl:hover{color:var(--neon-b);}
+
+/* Cards click cursor */
+.subject-card{cursor:pointer;}
+.subject-card:hover{border-color:var(--neon-g3);box-shadow:0 0 20px rgba(0,255,136,.04);}
+
+/* ── SETTINGS VIEW ── */
+.settings-section{background:var(--panel);border:1px solid var(--border2);margin-bottom:20px;overflow:hidden;}
+.settings-section-title{font-family:'Orbitron';font-size:0.55rem;letter-spacing:3px;color:var(--neon-b);padding:12px 16px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.settings-section-title::before{content:'';width:4px;height:4px;background:var(--neon-b);box-shadow:0 0 6px var(--neon-b);flex-shrink:0;}
+.settings-body{padding:14px 16px;}
+.set-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px;border:1px solid var(--border2);background:var(--bg);}
+.set-row:last-child{margin-bottom:0;}
+.set-inp{flex:1;background:#060a12;border:1px solid var(--border2);color:var(--text);padding:6px 10px;font-family:'Tajawal';font-size:0.82rem;outline:none;}
+.set-inp:focus{border-color:var(--neon-g);}
+.set-inp.sm{width:70px;flex:none;font-family:'Share Tech Mono';color:var(--neon-g);text-align:center;}
+.set-del{background:none;border:1px solid #330011;color:var(--neon-r);font-size:0.7rem;padding:4px 8px;cursor:pointer;font-family:'Share Tech Mono';}
+.set-del:hover{background:rgba(255,34,68,.1);}
+.set-add{display:flex;gap:0;border:1px solid var(--border2);margin-top:10px;}
+.set-add-inp{flex:1;background:#060a12;border:none;border-left:1px solid var(--border2);color:var(--text);padding:8px 12px;font-family:'Tajawal';font-size:0.82rem;outline:none;}
+.set-add-inp::placeholder{color:var(--muted);}
+.set-add-inp.sm{width:90px;flex:none;font-family:'Share Tech Mono';color:var(--neon-g);text-align:center;}
+.set-add-btn{background:var(--neon-g3);border:none;border-right:1px solid var(--neon-g2);color:var(--neon-g);font-family:'Tajawal';font-size:0.82rem;font-weight:900;padding:8px 16px;cursor:pointer;white-space:nowrap;}
+.set-add-btn:hover{box-shadow:0 0 10px #00ff8833;}
+.set-save-btn{background:var(--neon-g3);border:1px solid var(--neon-g2);color:var(--neon-g);font-family:'Orbitron';font-size:0.55rem;letter-spacing:2px;padding:9px 20px;cursor:pointer;margin-top:6px;}
+.set-save-btn:hover{box-shadow:0 0 14px #00ff8844;}
+.set-reset-btn{background:#080c14;border:1px solid var(--neon-o);color:var(--neon-o);font-family:'Orbitron';font-size:0.5rem;letter-spacing:2px;padding:6px 14px;cursor:pointer;}
+.set-reset-btn:hover{background:rgba(255,119,0,.08);}
+.day-edit-block{margin-bottom:12px;padding:12px;border:1px solid var(--border2);background:var(--bg);}
+.day-edit-block .day-label{font-weight:900;font-size:0.85rem;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.day-slots-wrap{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+.day-slot-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 4px;border:1px solid var(--border2);background:var(--panel);font-size:0.72rem;}
+.dst-del{background:none;border:none;color:var(--neon-r);cursor:pointer;font-size:0.75rem;line-height:1;}
+.day-add-slot{display:flex;gap:4px;margin-top:6px;}
+.day-slot-select{background:#060a12;border:1px solid var(--border2);color:var(--text);padding:5px 8px;font-family:'Tajawal';font-size:0.78rem;outline:none;flex:1;}
+.day-rep-inp{width:100%;background:#060a12;border:1px solid var(--border2);color:var(--muted);padding:5px 8px;font-family:'Tajawal';font-size:0.75rem;outline:none;margin-top:6px;}
+.color-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+</style>
+</head>
+<body>
+<div class="corner c-tl"></div>
+<div class="corner c-tr"></div>
+<div class="corner c-bl"></div>
+<div class="corner c-br"></div>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;padding:20px;">
+  <div style="font-family:'Orbitron';font-size:2rem;font-weight:900;color:var(--neon-g);text-shadow:0 0 20px #00ff8866;letter-spacing:6px;">STUDY<span style="color:var(--neon-b)">.</span>OS</div>
+  <div style="font-family:'Share Tech Mono';font-size:0.7rem;color:var(--muted);letter-spacing:3px;margin-top:-10px;">مركز القيادة الدراسي</div>
+  <div style="width:1px;height:40px;background:linear-gradient(180deg,var(--neon-g),transparent);margin:10px 0;"></div>
+  <div style="background:var(--panel);border:1px solid var(--border2);padding:30px 40px;text-align:center;max-width:340px;width:100%;">
+    <div style="font-size:0.7rem;color:var(--muted);letter-spacing:2px;margin-bottom:20px;font-family:'Share Tech Mono'">سجّل دخولك للمتابعة</div>
+    <button onclick="signInWithGoogle()" id="loginBtn" style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;background:#fff;border:none;padding:12px 20px;cursor:pointer;font-family:'Tajawal';font-size:0.95rem;font-weight:700;color:#333;transition:opacity .2s;">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
+      تسجيل الدخول بـ Google
+    </button>
+    <div id="loginErr" style="color:var(--neon-r);font-size:0.7rem;margin-top:12px;display:none;font-family:'Share Tech Mono'"></div>
+  </div>
+  <div style="font-family:'Share Tech Mono';font-size:0.55rem;color:#1a2a3a;letter-spacing:2px;">بياناتك محفوظة على السحابة · تزامن فوري بين كل الأجهزة</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" style="display:none">
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">STUDY<span>.</span>OS</div>
+  <div class="nav-tabs">
+    <div class="ntab active" onclick="switchTab('tracker')">📊 المحاضرات</div>
+    <div class="ntab" onclick="switchTab('schedule')">📅 الجدول</div>
+    <div class="ntab" onclick="switchTab('analytics')">📈 الإحصائيات</div>
+    <div class="ntab" onclick="switchTab('settings')">⚙️ الإعدادات</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <div class="clock" id="clk"></div>
+    <button onclick="exportData()" style="background:var(--neon-g3);border:1px solid var(--neon-g2);color:var(--neon-g);font-family:'Share Tech Mono';font-size:0.55rem;padding:4px 8px;cursor:pointer;letter-spacing:1px;" title="تصدير النسخة الاحتياطية">💾 حفظ</button>
+    <button onclick="document.getElementById('importFile').click()" style="background:#0a0c14;border:1px solid var(--border2);color:var(--muted);font-family:'Share Tech Mono';font-size:0.55rem;padding:4px 8px;cursor:pointer;letter-spacing:1px;" title="استيراد نسخة احتياطية">📂 استيراد</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    <img id="userAvatar" src="" style="width:26px;height:26px;border-radius:50%;border:1px solid var(--neon-g2);display:none;cursor:pointer;" title="تسجيل الخروج" onclick="signOut()">
+  </div>
+</div>
+
+<!-- ═══ TAB: TRACKER ═══ -->
+<div class="view active" id="tab-tracker">
+  <div style="margin-bottom:14px">
+    <div class="add-subject-row">
+      <input class="asi" id="subName" placeholder="اسم المادة (مثال: الرياضيات)..." onkeydown="if(event.key==='Enter')addSubject()">
+      <input class="asi num" id="subCount" type="number" placeholder="عدد المحاضرات" min="1" max="700">
+      <button class="asb" onclick="addSubject()">+ إضافة مادة</button>
+    </div>
+  </div>
+
+  <div class="sec-head">
+    <span class="sec-title">المواد الدراسية</span>
+    <div class="sec-line"></div>
+    <span class="sec-badge" id="globalBadge">—</span>
+  </div>
+
+  <div class="subjects-grid" id="subjectsGrid"></div>
+
+  <div class="empty-state" id="emptyState">
+    <div class="ico">🎓</div>
+    <p>لا توجد مواد بعد.<br>أضف مادتك الأولى من الأعلى.</p>
+  </div>
+</div>
+
+<!-- ═══ TAB: SCHEDULE ═══ -->
+<div class="view" id="tab-schedule">
+
+  <div class="sec-head"><span class="sec-title">الجدول الأسبوعي</span><div class="sec-line"></div></div>
+  <div class="sched-grid" style="grid-template-columns:1fr;max-width:900px;">
+    <div class="sched-card">
+      <div class="sched-card-title">الجدول اليومي — م1 / م2 / م3</div>
+      <table class="sched-table" id="weekTable"></table>
+    </div>
+  </div>
+
+  <div class="sec-head" style="margin-top:20px"><span class="sec-title">التوزيع الأسبوعي</span><div class="sec-line"></div></div>
+  <div class="sched-card" style="max-width:900px;margin-bottom:20px;">
+    <div class="sched-card-title">المطلوب — المستهدف — المكتمل</div>
+    <table class="dist-table" id="distTable"></table>
+  </div>
+
+  <div class="sec-head" style="margin-top:20px"><span class="sec-title">الجدول اليومي (تقنية 15/75)</span><div class="sec-line"></div></div>
+  <div class="daily-grid" style="margin-bottom:20px" id="dailyGrid"></div>
+
+  <div class="sec-head" style="margin-top:20px"><span class="sec-title">الخطة الزمنية الكاملة</span><div class="sec-line"></div></div>
+  <div class="timeline" id="timeline" style="max-width:700px;margin-bottom:20px;"></div>
+
+  <div class="sec-head" style="margin-top:20px"><span class="sec-title">قواعد ثابتة لا تتغير</span><div class="sec-line"></div></div>
+  <div style="max-width:700px;margin-bottom:20px;" id="rules"></div>
+</div>
+
+<!-- ═══ TAB: ANALYTICS ═══ -->
+<div class="view" id="tab-analytics">
+  <div class="analytics-grid" id="analyticsGrid"></div>
+  <div class="sec-head"><span class="sec-title">منحنى الإنجاز</span><div class="sec-line"></div></div>
+  <div class="sched-card" style="max-width:900px;padding:14px;margin-bottom:20px;">
+    <canvas id="progressChart" height="80"></canvas>
+  </div>
+</div>
+
+
+<!-- ═══ TAB: SETTINGS ═══ -->
+<div class="view" id="tab-settings">
+
+  <!-- App Title -->
+  <div class="settings-section">
+    <div class="settings-section-title">🏷️ اسم التطبيق</div>
+    <div class="settings-body" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input class="set-inp" id="set-app-title" placeholder="STUDY.OS" style="max-width:300px">
+      <button class="set-save-btn" onclick="saveAppTitle()">حفظ الاسم</button>
+    </div>
+  </div>
+
+  <!-- Weekly Schedule -->
+  <div class="settings-section">
+    <div class="settings-section-title">
+      📅 الجدول الأسبوعي
+      <button class="set-reset-btn" onclick="resetWeekData()">↺ استعادة الافتراضي</button>
+    </div>
+    <div class="settings-body" id="set-week-body"></div>
+  </div>
+
+  <!-- Distribution / Subjects per week -->
+  <div class="settings-section">
+    <div class="settings-section-title">
+      📊 توزيع المواد (مرات/أسبوع + الهدف)
+      <button class="set-reset-btn" onclick="resetDistData()">↺ استعادة الافتراضي</button>
+    </div>
+    <div class="settings-body" id="set-dist-body">
+      <div id="set-dist-rows"></div>
+      <div class="set-add" style="margin-top:10px">
+        <input class="set-add-inp" id="set-dist-name" placeholder="اسم المادة...">
+        <input class="set-add-inp sm" id="set-dist-weekly" type="number" placeholder="مرات" min="1">
+        <input class="set-add-inp sm" id="set-dist-target" type="number" placeholder="هدف" min="1">
+        <button class="set-add-btn" onclick="addDistRow()">+ إضافة</button>
+      </div>
+      <button class="set-save-btn" style="margin-top:10px" onclick="saveDistData()">💾 حفظ التوزيع</button>
+    </div>
+  </div>
+
+  <!-- Daily Time Slots -->
+  <div class="settings-section">
+    <div class="settings-section-title">
+      ⏱️ الجدول اليومي (تقنية 15/75)
+      <button class="set-reset-btn" onclick="resetDailySlots()">↺ استعادة الافتراضي</button>
+    </div>
+    <div class="settings-body" id="set-daily-body">
+      <div id="set-daily-rows"></div>
+      <div class="set-add">
+        <input class="set-add-inp sm" id="set-daily-time" placeholder="2:00 ← 2:15">
+        <input class="set-add-inp" id="set-daily-act" placeholder="وصف النشاط...">
+        <button class="set-add-btn" onclick="addDailySlot()">+ إضافة</button>
+      </div>
+      <button class="set-save-btn" style="margin-top:10px" onclick="saveDailySlots()">💾 حفظ الأوقات</button>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="settings-section">
+    <div class="settings-section-title">
+      🗓️ الخطة الزمنية الكاملة
+      <button class="set-reset-btn" onclick="resetTimeline()">↺ استعادة الافتراضي</button>
+    </div>
+    <div class="settings-body" id="set-tl-body">
+      <div id="set-tl-rows"></div>
+      <div class="set-add">
+        <input class="set-add-inp sm" id="set-tl-period" placeholder="الفترة الزمنية">
+        <input class="set-add-inp" id="set-tl-act" placeholder="وصف المرحلة...">
+        <button class="set-add-btn" onclick="addTimelineRow()">+ إضافة</button>
+      </div>
+      <button class="set-save-btn" style="margin-top:10px" onclick="saveTimeline()">💾 حفظ الخطة</button>
+    </div>
+  </div>
+
+  <!-- Rules -->
+  <div class="settings-section">
+    <div class="settings-section-title">
+      📋 القواعد الثابتة
+      <button class="set-reset-btn" onclick="resetRules()">↺ استعادة الافتراضي</button>
+    </div>
+    <div class="settings-body" id="set-rules-body">
+      <div id="set-rules-rows"></div>
+      <div class="set-add">
+        <input class="set-add-inp" id="set-rule-txt" placeholder="قاعدة جديدة...">
+        <button class="set-add-btn" onclick="addRule()">+ إضافة</button>
+      </div>
+      <button class="set-save-btn" style="margin-top:10px" onclick="saveRules()">💾 حفظ القواعد</button>
+    </div>
+  </div>
+
+  <!-- Data Management -->
+  <div class="settings-section">
+    <div class="settings-section-title">💾 إدارة البيانات</div>
+    <div class="settings-body" style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="exportData()" style="background:var(--neon-g3);border:1px solid var(--neon-g2);color:var(--neon-g);font-family:'Tajawal';font-size:0.85rem;font-weight:700;padding:9px 18px;cursor:pointer;">💾 تصدير كامل</button>
+      <button onclick="document.getElementById('importFile2').click()" style="background:#0a0c14;border:1px solid var(--border2);color:var(--muted);font-family:'Tajawal';font-size:0.85rem;font-weight:700;padding:9px 18px;cursor:pointer;">📂 استيراد</button>
+      <input type="file" id="importFile2" accept=".json" style="display:none" onchange="importData(event)">
+      <button onclick="if(confirm('هل أنت متأكد؟ سيتم حذف كل البيانات!'))resetAll()" style="background:#0a0208;border:1px solid var(--neon-r);color:var(--neon-r);font-family:'Tajawal';font-size:0.85rem;font-weight:700;padding:9px 18px;cursor:pointer;">🗑 إعادة ضبط كاملة</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ SUBJECT PAGE ═══ -->
+<div class="page" id="page-subject">
+  <button class="back-btn" onclick="goBack()">◀ رجوع إلى المواد</button>
+  <div class="sub-page-header" id="sph"></div>
+  <div class="sub-page-stats" id="sps"></div>
+  <div class="sub-page-actions" id="spa"></div>
+  <div class="ftabs" id="sftabs" style="margin-bottom:12px"></div>
+  <div class="lec-grid" id="slg"></div>
+  <div class="add-lec-row" style="margin-top:12px" id="salr"></div>
+</div>
+
+<!-- XP STRIP -->
+<div class="xp-strip">
+  <div class="lv-badge" id="lvBadge">LV.1</div>
+  <div class="xp-label">XP</div>
+  <div class="xp-track"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+  <div class="xp-nums" id="xpNums">0 / 100 XP</div>
+</div>
+
+<!-- NOTE MODAL -->
+<div class="overlay" id="noteOv">
+  <div class="modal">
+    <div class="modal-title">📝 ملاحظة المحاضرة</div>
+    <div class="field"><label>التقييم</label><div class="stars-r" id="starsR"><span class="star" data-v="1">★</span><span class="star" data-v="2">★</span><span class="star" data-v="3">★</span><span class="star" data-v="4">★</span><span class="star" data-v="5">★</span></div></div>
+    <div class="field"><label>ملاحظاتك</label><textarea id="noteTxt" placeholder="اكتب ملاحظاتك..."></textarea></div>
+    <div class="modal-btns">
+      <button class="mb p" onclick="saveNote()">حفظ</button>
+      <button class="mb g" onclick="closeOv('noteOv')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="editOv">
+  <div class="modal">
+    <div class="modal-title">✏️ تعديل المادة</div>
+    <div class="field"><label>اسم المادة</label><input type="text" id="editName" placeholder="اسم المادة"></div>
+    <div class="field"><label>العدد الكلي للمحاضرات</label><input type="number" id="editTotal" min="1" max="700"><div style="font-size:0.65rem;color:var(--muted);margin-top:5px;line-height:1.5" id="editHint"></div></div>
+    <div class="modal-btns"><button class="mb p" onclick="saveEdit()">حفظ</button><button class="mb g" onclick="closeOv('editOv')">إلغاء</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+</div><!-- end mainApp -->
+
+<script>
+// ═══════════════════════════════════
+// FIREBASE INIT
+// ═══════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyABVDPEiZAvby38vFeynpAdkLLE-00M8Yg",
+  authDomain: "habit-tracker-c5aae.firebaseapp.com",
+  databaseURL: "https://habit-tracker-c5aae-default-rtdb.firebaseio.com",
+  projectId: "habit-tracker-c5aae",
+  storageBucket: "habit-tracker-c5aae.firebasestorage.app",
+  messagingSenderId: "1058773784510",
+  appId: "1:1058773784510:web:fefed50800fb378ab60bef"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.database();
+
+let currentUser = null;
+let dbRef = null;
+let saveTimeout = null;
+
+function userPath(path){ return `users/${currentUser.uid}/${path}`; }
+
+// ── Auth ──
+function signInWithGoogle(){
+  const btn = document.getElementById('loginBtn');
+  btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none';
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(err=>{
+    document.getElementById('loginErr').style.display='block';
+    document.getElementById('loginErr').textContent = 'فشل تسجيل الدخول: ' + err.message;
+    btn.style.opacity='1'; btn.style.pointerEvents='auto';
+  });
+}
+
+function signOut(){
+  if(confirm('تسجيل الخروج؟')){ auth.signOut(); }
+}
+
+auth.onAuthStateChanged(user=>{
+  if(user){
+    currentUser = user;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    const av = document.getElementById('userAvatar');
+    if(user.photoURL){ av.src=user.photoURL; av.style.display='block'; }
+    startListening();
+  } else {
+    currentUser = null;
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+    document.getElementById('userAvatar').style.display = 'none';
+    if(dbRef) dbRef.off();
+  }
+});
+
+// ── Realtime sync ──
+function startListening(){
+  dbRef = db.ref(userPath('data'));
+  dbRef.on('value', snap=>{
+    const val = snap.val();
+    if(val && Array.isArray(val.subjects)){
+      D = val;
+    } else {
+      D = { subjects:[], done:{}, notes:{}, xp:0, level:1 };
+    }
+    gainXP(0);
+    renderTracker();
+    if(document.getElementById('tab-schedule').classList.contains('active')) renderSchedule();
+    if(document.getElementById('tab-analytics').classList.contains('active')) renderAnalytics();
+  });
+
+  // Load schedule settings from Firebase too
+  db.ref(userPath('schedule')).once('value').then(snap=>{
+    const s = snap.val() || {};
+    if(s.weekData)   WEEK_DATA   = s.weekData;
+    if(s.distData)   DIST_DATA   = s.distData;
+    if(s.dailySlots) DAILY_SLOTS = s.dailySlots;
+    if(s.timeline)   TIMELINE    = s.timeline;
+    if(s.rules)      RULES       = s.rules;
+    if(s.appTitle)   APP_TITLE   = s.appTitle;
+    SUBJECT_SCHEDULE = {};
+    DIST_DATA.forEach(r=>{ SUBJECT_SCHEDULE[r.sub]={weekly:r.weekly,target:r.target}; });
+    applyAppTitle();
+    renderSchedule();
+  });
+}
+
+function applyAppTitle(){
+  const parts = APP_TITLE.split('.');
+  if(parts.length===2){
+    document.querySelector('.logo').innerHTML = parts[0]+'<span>.</span>'+parts[1];
+  } else {
+    document.querySelector('.logo').textContent = APP_TITLE;
+  }
+}
+
+// ═══════════════════════════════════
+// DATA
+// ═══════════════════════════════════
+const COLORS = ['#00ff88','#00b4ff','#cc44ff','#ff7700','#ffcc00','#ff2244','#00ffcc','#aaaaff'];
+
+let SUBJECT_SCHEDULE = {
+  'الرياضيات': { weekly: 4, target: 137 },
+  'أحياء':     { weekly: 3, target: 95  },
+  'فيزياء':    { weekly: 3, target: 109 },
+  'كيمياء':    { weekly: 2, target: 76  },
+  'قواعد':     { weekly: 2, target: 75  },
+  'أدب':       { weekly: 2, target: 60  },
+  'إسلامية':   { weekly: 1, target: 30  },
+  'إنجليزي':   { weekly: 1, target: 30  },
+};
+
+let D = { subjects:[], done:{}, notes:{}, xp:0, level:1 };
+
+let noteTarget = null, noteStars = 0, progressChart = null;
+let openSubjects = new Set();
+let subFilters = {};
+
+function save(){
+  if(!currentUser) return;
+  // Debounce saves — wait 800ms after last change
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(()=>{
+    db.ref(userPath('data')).set(D).catch(e=>console.warn('save err',e));
+  }, 800);
+}
+
+async function loadData(){
+  // Data is loaded via realtime listener in startListening()
+  // This is kept for compatibility
+}
+
+function saveScheduleData(key, val){
+  if(!currentUser) return;
+  // Map keys to Firebase paths
+  const keyMap = {
+    'studyOS_weekData':   'weekData',
+    'studyOS_distData':   'distData',
+    'studyOS_dailySlots': 'dailySlots',
+    'studyOS_timeline':   'timeline',
+    'studyOS_rules':      'rules',
+  };
+  const fbKey = keyMap[key] || key;
+  db.ref(userPath('schedule/'+fbKey)).set(val).catch(e=>console.warn('sched save err',e));
+  // Also keep localStorage as fallback
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){}
+}
+
+// ═══════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════
+function tick(){
+  const n = new Date();
+  document.getElementById('clk').textContent =
+    n.toLocaleDateString('en',{weekday:'short',day:'2-digit',month:'short'}) + '  ' +
+    n.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+}
+setInterval(tick,1000); tick();
+
+// ═══════════════════════════════════
+// TAB SWITCH
+// ═══════════════════════════════════
+function switchTab(id){
+  document.querySelectorAll('.ntab').forEach((t,i)=>{
+    const ids=['tracker','schedule','analytics','settings'];
+    t.classList.toggle('active',ids[i]===id);
+  });
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='tab-'+id));
+  if(id==='analytics') renderAnalytics();
+  if(id==='schedule')  renderSchedule();
+  if(id==='settings')  renderSettingsPanel();
+}
+
+// ═══════════════════════════════════
+// PAGE NAVIGATION
+// ═══════════════════════════════════
+let currentSubjectId = null;
+let currentFilter = 'all';
+
+function goBack(){
+  currentSubjectId = null;
+  document.getElementById('page-subject').classList.remove('active');
+  document.getElementById('tab-tracker').classList.add('active');
+  renderTracker();
+}
+
+function openSubjectPage(subId){
+  currentSubjectId = subId;
+  currentFilter = subFilters[subId] || 'all';
+  document.getElementById('tab-tracker').classList.remove('active');
+  document.getElementById('page-subject').classList.add('active');
+  renderSubjectPage();
+}
+
+function renderSubjectPage(){
+  const subId = currentSubjectId;
+  const s = D.subjects.find(x=>x.id===subId);
+  if(!s){ goBack(); return; }
+  const si = D.subjects.indexOf(s);
+  const ci = si % COLORS.length;
+  const done  = s.lecs.filter((_,i)=>D.done[`${s.id}_${i}`]).length;
+  const total = s.lecs.length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+  const sched = SUBJECT_SCHEDULE[s.name];
+  const weekly = sched ? sched.weekly : '—';
+  const target = sched ? sched.target : total;
+
+  document.getElementById('sph').innerHTML = `
+    <div class="sub-page-title clr-${ci}">${s.name}</div>
+    <div class="sub-page-meta">${weekly} مرات/أسبوع &nbsp;·&nbsp; الهدف: ${target} &nbsp;·&nbsp; <span style="color:var(--neon-g)">${pct}% مكتمل</span></div>
+    <div class="sub-page-bar"><div class="sub-page-bar-fill" style="width:${pct}%;background:${s.color}"></div></div>`;
+
+  document.getElementById('sps').innerHTML = `
+    <div class="sps"><div class="sps-n" style="color:var(--neon-g)">${done}</div><div class="sps-l">منجزة</div></div>
+    <div class="sps"><div class="sps-n" style="color:var(--neon-r)">${total-done}</div><div class="sps-l">متبقية</div></div>
+    <div class="sps"><div class="sps-n clr-${ci}">${pct}%</div><div class="sps-l">الإنجاز</div></div>`;
+
+  document.getElementById('spa').innerHTML = `
+    <button class="spa gn" onclick="markAll(${subId},true)">✓ إنجاز الكل</button>
+    <button class="spa"    onclick="markAll(${subId},false)">↺ إلغاء الكل</button>
+    <button class="spa bl" onclick="openEdit(${subId})">✏️ تعديل</button>
+    <button class="spa rd" onclick="deleteSub(${subId})">🗑 حذف</button>`;
+
+  const f = currentFilter;
+  let lecs = s.lecs.map((l,i)=>({...l,_i:i}));
+  if(f==='done')    lecs = lecs.filter(l=>D.done[`${s.id}_${l._i}`]);
+  if(f==='pending') lecs = lecs.filter(l=>!D.done[`${s.id}_${l._i}`]);
+
+  document.getElementById('sftabs').innerHTML = `
+    <div class="ft ${f==='all'?'active':''}"     onclick="setF(${subId},'all')">الكل (${total})</div>
+    <div class="ft ${f==='pending'?'active':''}" onclick="setF(${subId},'pending')">متبقية (${total-done})</div>
+    <div class="ft ${f==='done'?'active':''}"    onclick="setF(${subId},'done')">منجزة (${done})</div>`;
+
+  document.getElementById('slg').innerHTML = lecs.length===0
+    ? '<div style="padding:20px;color:var(--muted);font-size:0.78rem;background:var(--panel);border:1px solid var(--border2)">لا توجد محاضرات</div>'
+    : lecs.map(l=>{
+        const key=`${s.id}_${l._i}`;
+        const isDone=!!D.done[key];
+        const note=D.notes[key];
+        return `<div class="lc ${isDone?'done':''}" onclick="toggleLec(${s.id},${l._i})">
+          <div class="lc-n"># ${l._i+1}</div>
+          <div class="lc-name">${l.name}</div>
+          <div class="lc-foot">
+            <div class="chk">${isDone?'✓':''}</div>
+            <div style="display:flex;align-items:center;gap:3px">
+              ${note&&note.rating?'<span class="lc-stars">'+ '★'.repeat(note.rating)+'</span>':''} 
+              <button class="note-btn ${note&&(note.text||note.rating)?'on':''}" onclick="event.stopPropagation();openNote(${s.id},${l._i})">📝</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+  document.getElementById('salr').innerHTML = `
+    <input class="ali num" type="number" id="salc" placeholder="عدد" min="1">
+    <input class="ali" id="saln" placeholder="إضافة محاضرات..." onkeydown="if(event.key==='Enter')addLecsPage()">
+    <button class="alb" onclick="addLecsPage()">+</button>`;
+}
+
+function addLecsPage(){
+  const s=D.subjects.find(x=>x.id===currentSubjectId);
+  if(!s)return;
+  const n=parseInt(document.getElementById('salc')?.value)||1;
+  const name=document.getElementById('saln')?.value.trim()||'';
+  const st=s.lecs.length;
+  for(let i=0;i<n;i++) s.lecs.push({name: name||`محاضرة ${st+i+1}`});
+  document.getElementById('salc').value='';
+  document.getElementById('saln').value='';
+  save(); renderSubjectPage();
+}
+
+// ═══════════════════════════════════
+// ADD SUBJECT
+// ═══════════════════════════════════
+function addSubject(){
+  const name  = document.getElementById('subName').value.trim();
+  const count = parseInt(document.getElementById('subCount').value);
+  if(!name){ toast('أدخل اسم المادة'); return; }
+  if(!count||count<1){ toast('أدخل عدد المحاضرات'); return; }
+  const id    = Date.now();
+  const color = COLORS[D.subjects.length % COLORS.length];
+  const lecs  = Array.from({length:count},(_,i)=>({ name:'محاضرة '+(i+1) }));
+  D.subjects.push({ id, name, color, lecs });
+  save();
+  document.getElementById('subName').value='';
+  document.getElementById('subCount').value='';
+  renderTracker();
+  toast('+ مادة جديدة: '+name);
+}
+
+// ═══════════════════════════════════
+// RENDER TRACKER (grid of cards)
+// ═══════════════════════════════════
+function renderTracker(){
+  const grid = document.getElementById('subjectsGrid');
+  const empty = document.getElementById('emptyState');
+  if(!D.subjects.length){ grid.innerHTML=''; empty.style.display='block'; updateGlobalBadge(); return; }
+  empty.style.display='none';
+
+  grid.innerHTML = D.subjects.map((s,si)=>{
+    const ci   = si % COLORS.length;
+    const done = s.lecs.filter((_,i)=>D.done[`${s.id}_${i}`]).length;
+    const total= s.lecs.length;
+    const pct  = total ? Math.round(done/total*100) : 0;
+    const sched= SUBJECT_SCHEDULE[s.name];
+    const weekly= sched ? sched.weekly : '—';
+    const target= sched ? sched.target : total;
+    return `
+    <div class="subject-card" onclick="openSubjectPage(${s.id})">
+      <div class="sc-header">
+        <div class="sc-left">
+          <div class="sc-color" style="background:${s.color}"></div>
+          <div>
+            <div class="sc-name clr-${ci}">${s.name}</div>
+            <div style="font-size:0.6rem;color:var(--muted);margin-top:2px;font-family:'Share Tech Mono'">${weekly}x/أسبوع · هدف: ${target}</div>
+          </div>
+        </div>
+        <div class="sc-right">
+          <div>
+            <div class="sc-pct clr-${ci}">${pct}%</div>
+            <div class="sc-counts">${done}/${total}</div>
+          </div>
+          <div style="color:var(--muted);font-size:0.7rem">▶</div>
+        </div>
+      </div>
+      <div class="sc-bar-track"><div class="sc-bar-fill" style="width:${pct}%;background:${s.color}"></div></div>
+    </div>`;
+  }).join('');
+  updateGlobalBadge();
+}
+
+function setF(id,f){ subFilters[id]=f; currentFilter=f; renderSubjectPage(); }
+
+function updateGlobalBadge(){
+  let td=0,tt=0;
+  D.subjects.forEach(s=>{tt+=s.lecs.length;td+=s.lecs.filter((_,i)=>D.done[`${s.id}_${i}`]).length;});
+  const pct=tt?Math.round(td/tt*100):0;
+  document.getElementById('globalBadge').textContent=`${td}/${tt} — ${pct}%`;
+}
+
+function toggleLec(subId,li){
+  const key=`${subId}_${li}`;
+  if(D.done[key]){ delete D.done[key]; gainXP(-5); }
+  else { D.done[key]=true; gainXP(10); toast('⚡ +10 XP — محاضرة مكتملة!'); }
+  save(); renderSubjectPage();
+}
+
+function markAll(subId,val){
+  const s=D.subjects.find(x=>x.id===subId);
+  if(!s)return;
+  s.lecs.forEach((_,i)=>{ const k=`${subId}_${i}`; if(val) D.done[k]=true; else delete D.done[k]; });
+  save(); renderSubjectPage();
+}
+
+function deleteSub(subId){
+  if(!confirm('حذف هذه المادة وكل بياناتها؟'))return;
+  D.subjects=D.subjects.filter(s=>s.id!==subId);
+  Object.keys(D.done).filter(k=>k.startsWith(subId+'_')).forEach(k=>delete D.done[k]);
+  Object.keys(D.notes).filter(k=>k.startsWith(subId+'_')).forEach(k=>delete D.notes[k]);
+  save(); goBack();
+}
+
+let editTarget = null;
+
+function openEdit(subId){
+  const s = D.subjects.find(x=>x.id===subId);
+  if(!s) return;
+  editTarget = subId;
+  document.getElementById('editName').value = s.name;
+  document.getElementById('editTotal').value = s.lecs.length;
+  const done = s.lecs.filter((_,i)=>D.done[`${s.id}_${i}`]).length;
+  document.getElementById('editHint').innerHTML =
+    `الحالي: <b style="color:var(--text)">${s.lecs.length}</b> · منجزة: <b style="color:var(--neon-g)">${done}</b><br>
+     <span style="color:var(--neon-o)">⚠️ التقليل يحذف المحاضرات الأخيرة وبياناتها</span>`;
+  document.getElementById('editOv').classList.add('open');
+}
+
+function saveEdit(){
+  const s = D.subjects.find(x=>x.id===editTarget);
+  if(!s) return;
+  const newName  = document.getElementById('editName').value.trim();
+  const newTotal = parseInt(document.getElementById('editTotal').value);
+  if(!newName){ toast('أدخل اسم المادة'); return; }
+  if(!newTotal||newTotal<1){ toast('أدخل عدداً صحيحاً'); return; }
+  s.name = newName;
+  const current = s.lecs.length;
+  if(newTotal > current){
+    for(let i=current; i<newTotal; i++) s.lecs.push({name:`محاضرة ${i+1}`});
+    toast(`✅ أُضيف ${newTotal-current} محاضرة`);
+  } else if(newTotal < current){
+    for(let i=newTotal; i<current; i++){ delete D.done[`${s.id}_${i}`]; delete D.notes[`${s.id}_${i}`]; }
+    s.lecs = s.lecs.slice(0, newTotal);
+    toast(`✅ حُذف ${current-newTotal} محاضرة`);
+  } else { toast('✅ تم الحفظ'); }
+  save(); closeOv('editOv');
+  if(currentSubjectId) renderSubjectPage(); else renderTracker();
+}
+
+function addLecs(subId){
+  const s=D.subjects.find(x=>x.id===subId);
+  if(!s)return;
+  const n=parseInt(document.getElementById(`alc_${subId}`)?.value)||1;
+  const name=document.getElementById(`aln_${subId}`)?.value.trim()||'';
+  const st=s.lecs.length;
+  for(let i=0;i<n;i++) s.lecs.push({name: name||`محاضرة ${st+i+1}`});
+  save(); renderSubjectPage();
+}
+
+
+// ═══════════════════════════════════
+// NOTE
+// ═══════════════════════════════════
+function openNote(subId,li){
+  noteTarget={subId,li};
+  const n=D.notes[`${subId}_${li}`]||{};
+  document.getElementById('noteTxt').value=n.text||'';
+  noteStars=n.rating||0;
+  rStars();
+  document.getElementById('noteOv').classList.add('open');
+}
+function rStars(){ document.querySelectorAll('#starsR .star').forEach(s=>s.classList.toggle('lit',parseInt(s.dataset.v)<=noteStars)); }
+document.querySelectorAll('#starsR .star').forEach(s=>s.addEventListener('click',()=>{ noteStars=parseInt(s.dataset.v); rStars(); }));
+function saveNote(){
+  const k=`${noteTarget.subId}_${noteTarget.li}`;
+  D.notes[k]={ text:document.getElementById('noteTxt').value.trim(), rating:noteStars };
+  save(); closeOv('noteOv'); renderTracker();
+}
+
+// ═══════════════════════════════════
+// XP
+// ═══════════════════════════════════
+function gainXP(n){
+  D.xp=Math.max(0,D.xp+n);
+  const xpPerLv=100+(D.level-1)*50;
+  while(D.xp>=xpPerLv){ D.xp-=xpPerLv; D.level++; toast('🏆 LEVEL UP! → LV.'+D.level); }
+  const p=Math.round(D.xp/(100+(D.level-1)*50)*100);
+  document.getElementById('xpFill').style.width=p+'%';
+  document.getElementById('xpNums').textContent=D.xp+' / '+(100+(D.level-1)*50)+' XP';
+  document.getElementById('lvBadge').textContent='LV.'+D.level;
+  save();
+}
+
+// ═══════════════════════════════════
+// SCHEDULE RENDER
+// ═══════════════════════════════════
+// ═══════════════════════════════════
+// DEFAULT DATA (used on first run)
+// ═══════════════════════════════════
+const DEFAULT_WEEK_DATA = [
+  { day:'الأحد',    slots:[{c:'pill-m',t:'رياضيات'},{c:'pill-bio',t:'أحياء'},{c:'pill-arab-g',t:'قواعد'}], rep:'—' },
+  { day:'الإثنين',  slots:[{c:'pill-phys',t:'فيزياء'},{c:'pill-chem',t:'كيمياء'},{c:'pill-arab-g',t:'قواعد'}], rep:'مراجعة الأحد' },
+  { day:'الثلاثاء', slots:[{c:'pill-m',t:'رياضيات'},{c:'pill-bio',t:'أحياء'},{c:'pill-arab-l',t:'أدب'}], rep:'مراجعة الإثنين' },
+  { day:'الأربعاء', slots:[{c:'pill-phys',t:'فيزياء'},{c:'pill-chem',t:'كيمياء'},{c:'pill-arab-l',t:'أدب'}], rep:'مراجعة الثلاثاء' },
+  { day:'الخميس',   slots:[{c:'pill-m',t:'رياضيات'},{c:'pill-phys',t:'فيزياء'},{c:'pill-isl',t:'إسلامية'}], rep:'مراجعة الأربعاء' },
+  { day:'الجمعة',   slots:[{c:'pill-m',t:'رياضيات'},{c:'pill-bio',t:'أحياء'},{c:'pill-exam',t:'اختبار تراكمي'}], rep:'تقييم شامل' },
+  { day:'السبت',    slots:[{c:'pill-eng',t:'إنجليزي فقط 📚'}], rep:'راحة / مرونة' },
+];
+
+const DEFAULT_DIST_DATA = [
+  { sub:'رياضيات', weekly:4, target:137, color:'#00ff88' },
+  { sub:'أحياء',   weekly:3, target:95,  color:'#cc44ff' },
+  { sub:'فيزياء',  weekly:3, target:109, color:'#00b4ff' },
+  { sub:'كيمياء',  weekly:2, target:76,  color:'#ff7700' },
+  { sub:'قواعد',   weekly:2, target:75,  color:'#ffcc00' },
+  { sub:'أدب',     weekly:2, target:60,  color:'#ff2244' },
+  { sub:'إسلامية', weekly:1, target:30,  color:'#66ffaa' },
+  { sub:'إنجليزي', weekly:1, target:30,  color:'#aaaaff' },
+];
+
+const DEFAULT_DAILY_SLOTS = [
+  { time:'2:00 ← 2:15',  act:'تكرار متتباعد' },
+  { time:'2:15 ← 3:30',  act:'محاضرة 1 + مسائل' },
+  { time:'3:30 ← 3:45',  act:'استراحة' },
+  { time:'3:45 ← 4:00',  act:'تكرار متتباعد' },
+  { time:'4:00 ← 5:15',  act:'محاضرة 2 + مسائل' },
+  { time:'5:15 ← 5:45',  act:'استراحة رئيسية' },
+  { time:'5:45 ← 6:45',  act:'محاضرة 3 + حفظ' },
+  { time:'6:45 ← 7:00',  act:'بطاقات التكرار' },
+];
+
+const DEFAULT_TIMELINE = [
+  { period:'أبريل ← يناير 2027', act:'3 محاضرات يومياً ثابتة', color:'#00ff88' },
+  { period:'يناير 2027 كامل',     act:'مراجعة + وزاريات فقط 🎯', color:'#ff7700' },
+  { period:'فبراير 2027',          act:'✅ التمهيدي', color:'#ffcc00' },
+  { period:'مارس ← يونيو 2027',   act:'تشخيص + نقاط ضعف + وزاريات', color:'#00b4ff' },
+  { period:'يوليو 2027',           act:'🏆 النهائي', color:'#cc44ff' },
+];
+
+const DEFAULT_RULES = [
+  { text:'إذا لم تكمل المحاضرة <strong>توقف عند وقتها وأكملها في اليوم القادم</strong> لنفس المادة' },
+  { text:'إذا غبت أسبوعاً أو أسبوعين <strong>أكمل بنفس الإيقاع</strong> من حيث توقفت' },
+  { text:'<strong>لا تنتقل للمحاضرة التالية</strong> قبل حل 3 مسائل على ما درسته' },
+];
+
+// Pill CSS class options
+const PILL_OPTIONS = [
+  {c:'pill-m',      label:'رياضيات'},
+  {c:'pill-bio',    label:'أحياء'},
+  {c:'pill-phys',   label:'فيزياء'},
+  {c:'pill-chem',   label:'كيمياء'},
+  {c:'pill-arab-g', label:'قواعد'},
+  {c:'pill-arab-l', label:'أدب'},
+  {c:'pill-isl',    label:'إسلامية'},
+  {c:'pill-eng',    label:'إنجليزي'},
+  {c:'pill-exam',   label:'اختبار'},
+  {c:'pill-review', label:'مراجعة'},
+  {c:'pill-rest',   label:'راحة'},
+];
+
+// ═══════════════════════════════════
+// SCHEDULE DATA (loaded from storage)
+// ═══════════════════════════════════
+let WEEK_DATA, DIST_DATA, DAILY_SLOTS, TIMELINE, RULES, APP_TITLE;
+
+function loadScheduleData(){
+  // Use defaults — Firebase will override via startListening
+  WEEK_DATA   = DEFAULT_WEEK_DATA;
+  DIST_DATA   = DEFAULT_DIST_DATA;
+  DAILY_SLOTS = DEFAULT_DAILY_SLOTS;
+  TIMELINE    = DEFAULT_TIMELINE;
+  RULES       = DEFAULT_RULES;
+  APP_TITLE   = 'STUDY.OS';
+  SUBJECT_SCHEDULE = {};
+  DIST_DATA.forEach(r=>{ SUBJECT_SCHEDULE[r.sub]={weekly:r.weekly,target:r.target}; });
+}
+
+function saveScheduleData(key, val){
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){}
+}
+
+function renderSchedule(){
+  const todayIdx = new Date().getDay(); // 0=Sun,1=Mon,...,6=Sat
+  // Week table
+  const wt = document.getElementById('weekTable');
+  wt.innerHTML = `<thead><tr>
+    <th>اليوم</th><th>م1</th><th>م2</th><th>م3</th><th>تكرار متتباعد</th>
+  </tr></thead><tbody>${WEEK_DATA.map((r,ri)=>{
+    const isToday = ri === todayIdx;
+    return `
+    <tr class="${isToday?'today-row':''}">
+      <td class="day-cell">${r.day}${isToday?' 🟢':''}</td>
+      <td>${r.slots[0]?`<span class="slot-pill ${r.slots[0].c}">${r.slots[0].t}</span>`:''}</td>
+      <td>${r.slots[1]?`<span class="slot-pill ${r.slots[1].c}">${r.slots[1].t}</span>`:''}</td>
+      <td>${r.slots[2]?`<span class="slot-pill ${r.slots[2].c}">${r.slots[2].t}</span>`:'<span class="slot-pill pill-rest">—</span>'}</td>
+      <td style="color:var(--muted);font-size:0.72rem">${r.rep||''}</td>
+    </tr>`}).join('')}</tbody>`;
+
+  // Dist table — merge with actual progress
+  const dt = document.getElementById('distTable');
+  const totalWeekly = DIST_DATA.reduce((a,r)=>a+r.weekly,0);
+  const totalTarget  = DIST_DATA.reduce((a,r)=>a+r.target,0);
+  dt.innerHTML = `<thead><tr><th>المادة</th><th>مرات/أسبوع</th><th>المستهدف</th><th>مكتمل</th><th>التقدم</th></tr></thead>
+  <tbody>${DIST_DATA.map(r=>{
+    const sub = D.subjects.find(s=>s.name===r.sub);
+    const done = sub ? sub.lecs.filter((_,i)=>D.done[`${sub.id}_${i}`]).length : 0;
+    const total = sub ? sub.lecs.length : r.target;
+    const pct = total ? Math.round(done/total*100) : 0;
+    return `<tr>
+      <td style="font-weight:700;color:${r.color}">${r.sub}</td>
+      <td style="font-family:'Share Tech Mono';color:var(--neon-b)">${r.weekly}</td>
+      <td class="target-num">${r.target}</td>
+      <td class="done-num" style="color:${r.color}">${done}</td>
+      <td><div class="dist-bar"><div class="dist-mini"><div class="dist-mini-fill" style="width:${pct}%;background:${r.color}"></div></div><span style="font-family:'Share Tech Mono';font-size:0.62rem;color:${r.color}">${pct}%</span></div></td>
+    </tr>`;
+  }).join('')}
+  <tr><td>المجموع</td><td style="font-family:'Share Tech Mono';color:var(--neon-b)">${totalWeekly}/أسبوع</td><td class="target-num">${totalTarget}</td>
+    <td class="done-num">${D.subjects.reduce((a,s)=>a+s.lecs.filter((_,i)=>D.done[`${s.id}_${i}`]).length,0)}</td><td></td></tr>
+  </tbody>`;
+
+  // Daily slots
+  document.getElementById('dailyGrid').innerHTML = DAILY_SLOTS.map((s,i)=>`
+    <div class="time-slot" style="border-color:${i%2===0?'var(--neon-g3)':'var(--neon-b3)'}">
+      <div class="ts-act" style="color:${s.act.includes('استراحة')?'var(--muted)':s.act.includes('تكرار')?'var(--neon-g)':'var(--text)'}">${s.act}</div>
+      <div class="ts-time" style="color:${i%2===0?'var(--neon-g)':'var(--neon-b)'}">${s.time}</div>
+    </div>`).join('');
+
+  // Timeline
+  document.getElementById('timeline').innerHTML = TIMELINE.map(t=>`
+    <div class="tl-item">
+      <div class="tl-dot" style="background:${t.color};box-shadow:0 0 8px ${t.color}88"></div>
+      <div class="tl-body" style="border-color:${t.color}33">
+        <div class="tl-period">${t.period}</div>
+        <div class="tl-act">${t.act}</div>
+      </div>
+    </div>`).join('');
+
+  // Rules
+  document.getElementById('rules').innerHTML = RULES.map((r,i)=>`
+    <div class="rule-card">
+      <div class="rule-num">${i+1}</div>
+      <div class="rule-text">${r.text}</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════
+// SETTINGS PANEL
+// ═══════════════════════════════════
+function renderSettingsPanel(){
+  document.getElementById('set-app-title').value = APP_TITLE;
+  renderSetWeek();
+  renderSetDist();
+  renderSetDaily();
+  renderSetTimeline();
+  renderSetRules();
+}
+
+// ── App Title ──
+function saveAppTitle(){
+  APP_TITLE = document.getElementById('set-app-title').value.trim() || 'STUDY.OS';
+  if(currentUser) db.ref(userPath('schedule/appTitle')).set(APP_TITLE);
+  try { localStorage.setItem('studyOS_appTitle', APP_TITLE); } catch(e){}
+  applyAppTitle();
+  toast('✅ تم حفظ اسم التطبيق');
+}
+
+// ── Weekly Schedule Editor ──
+function renderSetWeek(){
+  const body = document.getElementById('set-week-body');
+  const pillOpts = PILL_OPTIONS.map(p=>`<option value="${p.c}">${p.label}</option>`).join('');
+  body.innerHTML = WEEK_DATA.map((r,ri)=>`
+    <div class="day-edit-block">
+      <div class="day-label">
+        <span style="color:var(--neon-g);font-family:'Share Tech Mono'">${ri+1}</span>
+        <input class="set-inp" style="max-width:130px;font-weight:900" value="${r.day}" onchange="WEEK_DATA[${ri}].day=this.value">
+      </div>
+      <div class="day-slots-wrap" id="dslots-${ri}">
+        ${r.slots.map((sl,si)=>`
+          <div class="day-slot-tag">
+            <select class="day-slot-select" style="border:none;background:transparent;padding:2px 4px;font-size:0.72rem;" onchange="WEEK_DATA[${ri}].slots[${si}].c=this.value;WEEK_DATA[${ri}].slots[${si}].t=this.options[this.selectedIndex].text.split('—')[0].trim()">
+              ${PILL_OPTIONS.map(p=>`<option value="${p.c}" ${sl.c===p.c?'selected':''}>${p.label}</option>`).join('')}
+            </select>
+            <input class="set-inp" style="width:90px;border:none;padding:2px 4px;font-size:0.72rem" value="${sl.t}" onchange="WEEK_DATA[${ri}].slots[${si}].t=this.value">
+            <button class="dst-del" onclick="WEEK_DATA[${ri}].slots.splice(${si},1);renderSetWeek()">✕</button>
+          </div>`).join('')}
+      </div>
+      <div class="day-add-slot">
+        <select class="day-slot-select" id="ns-c-${ri}">
+          ${pillOpts}
+        </select>
+        <input class="set-inp" id="ns-t-${ri}" placeholder="اسم الحصة" style="flex:1">
+        <button class="set-add-btn" onclick="addDaySlot(${ri})">+</button>
+      </div>
+      <input class="day-rep-inp" value="${r.rep||''}" placeholder="ملاحظة المراجعة..." onchange="WEEK_DATA[${ri}].rep=this.value">
+    </div>`).join('')+
+    `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="set-add-btn" onclick="WEEK_DATA.push({day:'يوم جديد',slots:[],rep:''});renderSetWeek()">+ إضافة يوم</button>
+      <button class="set-save-btn" onclick="saveWeekData()">💾 حفظ الجدول الأسبوعي</button>
+    </div>`;
+}
+
+function addDaySlot(ri){
+  const c = document.getElementById(`ns-c-${ri}`).value;
+  const t = document.getElementById(`ns-t-${ri}`).value.trim() || PILL_OPTIONS.find(p=>p.c===c)?.label || 'حصة';
+  WEEK_DATA[ri].slots.push({c,t});
+  document.getElementById(`ns-t-${ri}`).value='';
+  renderSetWeek();
+}
+
+function saveWeekData(){
+  saveScheduleData('studyOS_weekData', WEEK_DATA);
+  renderSchedule();
+  toast('✅ تم حفظ الجدول الأسبوعي');
+}
+
+function resetWeekData(){
+  if(!confirm('إعادة الجدول للقيم الافتراضية؟')) return;
+  WEEK_DATA = JSON.parse(JSON.stringify(DEFAULT_WEEK_DATA));
+  saveScheduleData('studyOS_weekData', WEEK_DATA);
+  renderSetWeek(); renderSchedule();
+  toast('↺ تم استعادة الجدول الافتراضي');
+}
+
+// ── Distribution Editor ──
+function renderSetDist(){
+  const rows = document.getElementById('set-dist-rows');
+  rows.innerHTML = DIST_DATA.map((r,i)=>`
+    <div class="set-row">
+      <input class="set-inp" value="${r.sub}" placeholder="اسم المادة" onchange="DIST_DATA[${i}].sub=this.value">
+      <input class="set-inp sm" type="number" value="${r.weekly}" min="1" title="مرات/أسبوع" onchange="DIST_DATA[${i}].weekly=+this.value">
+      <input class="set-inp sm" type="number" value="${r.target}" min="1" title="الهدف" onchange="DIST_DATA[${i}].target=+this.value">
+      <input type="color" value="${r.color}" onchange="DIST_DATA[${i}].color=this.value" style="width:32px;height:32px;border:none;background:transparent;cursor:pointer;padding:0">
+      <button class="set-del" onclick="DIST_DATA.splice(${i},1);renderSetDist()">حذف</button>
+    </div>`).join('');
+}
+
+function addDistRow(){
+  const sub    = document.getElementById('set-dist-name').value.trim();
+  const weekly = parseInt(document.getElementById('set-dist-weekly').value)||1;
+  const target = parseInt(document.getElementById('set-dist-target').value)||30;
+  if(!sub){ toast('أدخل اسم المادة'); return; }
+  DIST_DATA.push({sub, weekly, target, color: COLORS[DIST_DATA.length % COLORS.length]});
+  document.getElementById('set-dist-name').value='';
+  document.getElementById('set-dist-weekly').value='';
+  document.getElementById('set-dist-target').value='';
+  renderSetDist();
+}
+
+function saveDistData(){
+  saveScheduleData('studyOS_distData', DIST_DATA);
+  SUBJECT_SCHEDULE={};
+  DIST_DATA.forEach(r=>{ SUBJECT_SCHEDULE[r.sub]={weekly:r.weekly,target:r.target}; });
+  renderSchedule(); renderTracker();
+  toast('✅ تم حفظ توزيع المواد');
+}
+
+function resetDistData(){
+  if(!confirm('إعادة التوزيع للقيم الافتراضية؟')) return;
+  DIST_DATA = JSON.parse(JSON.stringify(DEFAULT_DIST_DATA));
+  saveScheduleData('studyOS_distData', DIST_DATA);
+  SUBJECT_SCHEDULE={};
+  DIST_DATA.forEach(r=>{ SUBJECT_SCHEDULE[r.sub]={weekly:r.weekly,target:r.target}; });
+  renderSetDist(); renderSchedule(); renderTracker();
+  toast('↺ تم استعادة التوزيع الافتراضي');
+}
+
+// ── Daily Slots Editor ──
+function renderSetDaily(){
+  const rows = document.getElementById('set-daily-rows');
+  rows.innerHTML = DAILY_SLOTS.map((s,i)=>`
+    <div class="set-row">
+      <input class="set-inp sm" value="${s.time}" placeholder="الوقت" onchange="DAILY_SLOTS[${i}].time=this.value" style="width:110px">
+      <input class="set-inp" value="${s.act}" placeholder="النشاط" onchange="DAILY_SLOTS[${i}].act=this.value">
+      <button class="set-del" onclick="DAILY_SLOTS.splice(${i},1);renderSetDaily()">حذف</button>
+    </div>`).join('');
+}
+
+function addDailySlot(){
+  const time = document.getElementById('set-daily-time').value.trim();
+  const act  = document.getElementById('set-daily-act').value.trim();
+  if(!time||!act){ toast('أدخل الوقت والنشاط'); return; }
+  DAILY_SLOTS.push({time,act});
+  document.getElementById('set-daily-time').value='';
+  document.getElementById('set-daily-act').value='';
+  renderSetDaily();
+}
+
+function saveDailySlots(){
+  saveScheduleData('studyOS_dailySlots', DAILY_SLOTS);
+  renderSchedule();
+  toast('✅ تم حفظ الجدول اليومي');
+}
+
+function resetDailySlots(){
+  if(!confirm('إعادة الأوقات للقيم الافتراضية؟')) return;
+  DAILY_SLOTS = JSON.parse(JSON.stringify(DEFAULT_DAILY_SLOTS));
+  saveScheduleData('studyOS_dailySlots', DAILY_SLOTS);
+  renderSetDaily(); renderSchedule();
+  toast('↺ تم استعادة الأوقات الافتراضية');
+}
+
+// ── Timeline Editor ──
+function renderSetTimeline(){
+  const rows = document.getElementById('set-tl-rows');
+  rows.innerHTML = TIMELINE.map((t,i)=>`
+    <div class="set-row">
+      <input class="set-inp sm" value="${t.period}" placeholder="الفترة" onchange="TIMELINE[${i}].period=this.value" style="width:140px">
+      <input class="set-inp" value="${t.act}" placeholder="وصف المرحلة" onchange="TIMELINE[${i}].act=this.value">
+      <input type="color" value="${t.color}" onchange="TIMELINE[${i}].color=this.value" style="width:32px;height:32px;border:none;background:transparent;cursor:pointer;padding:0">
+      <button class="set-del" onclick="TIMELINE.splice(${i},1);renderSetTimeline()">حذف</button>
+    </div>`).join('');
+}
+
+function addTimelineRow(){
+  const period = document.getElementById('set-tl-period').value.trim();
+  const act    = document.getElementById('set-tl-act').value.trim();
+  if(!period||!act){ toast('أدخل الفترة والوصف'); return; }
+  TIMELINE.push({period, act, color: '#00ff88'});
+  document.getElementById('set-tl-period').value='';
+  document.getElementById('set-tl-act').value='';
+  renderSetTimeline();
+}
+
+function saveTimeline(){
+  saveScheduleData('studyOS_timeline', TIMELINE);
+  renderSchedule();
+  toast('✅ تم حفظ الخطة الزمنية');
+}
+
+function resetTimeline(){
+  if(!confirm('إعادة الخطة الزمنية للقيم الافتراضية؟')) return;
+  TIMELINE = JSON.parse(JSON.stringify(DEFAULT_TIMELINE));
+  saveScheduleData('studyOS_timeline', TIMELINE);
+  renderSetTimeline(); renderSchedule();
+  toast('↺ تم استعادة الخطة الافتراضية');
+}
+
+// ── Rules Editor ──
+function renderSetRules(){
+  const rows = document.getElementById('set-rules-rows');
+  rows.innerHTML = RULES.map((r,i)=>`
+    <div class="set-row">
+      <input class="set-inp" value="${r.text.replace(/<[^>]+>/g,'')}" placeholder="نص القاعدة" onchange="RULES[${i}].text=this.value">
+      <button class="set-del" onclick="RULES.splice(${i},1);renderSetRules()">حذف</button>
+    </div>`).join('');
+}
+
+function addRule(){
+  const txt = document.getElementById('set-rule-txt').value.trim();
+  if(!txt){ toast('أدخل نص القاعدة'); return; }
+  RULES.push({text: txt});
+  document.getElementById('set-rule-txt').value='';
+  renderSetRules();
+}
+
+function saveRules(){
+  saveScheduleData('studyOS_rules', RULES);
+  renderSchedule();
+  toast('✅ تم حفظ القواعد');
+}
+
+function resetRules(){
+  if(!confirm('إعادة القواعد للقيم الافتراضية؟')) return;
+  RULES = JSON.parse(JSON.stringify(DEFAULT_RULES));
+  saveScheduleData('studyOS_rules', RULES);
+  renderSetRules(); renderSchedule();
+  toast('↺ تم استعادة القواعد الافتراضية');
+}
+
+// ── Full Reset ──
+function resetAll(){
+  if(!confirm('هل أنت متأكد؟ سيتم حذف كل البيانات!')) return;
+  if(currentUser){
+    db.ref(userPath('data')).remove();
+    db.ref(userPath('schedule')).remove();
+  }
+  localStorage.clear();
+  location.reload();
+}
+
+// ═══════════════════════════════════
+// ANALYTICS
+// ═══════════════════════════════════
+function renderAnalytics(){
+  const grid = document.getElementById('analyticsGrid');
+  let totalDone=0, totalLecs=0;
+
+  const cards = D.subjects.map((s,si)=>{
+    const done  = s.lecs.filter((_,i)=>D.done[`${s.id}_${i}`]).length;
+    const total = s.lecs.length;
+    const pct   = total ? Math.round(done/total*100) : 0;
+    totalDone += done; totalLecs += total;
+    const sched = SUBJECT_SCHEDULE[s.name];
+    const target = sched ? sched.target : total;
+    const ci = si % COLORS.length;
+    return `<div class="an-card">
+      <div class="an-title">${s.name}</div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px">
+        <span style="font-family:'Orbitron';font-size:1.8rem;font-weight:900;color:${s.color}">${pct}%</span>
+        <span style="font-size:0.7rem;color:var(--muted)">${done} من ${total}</span>
+      </div>
+      <div style="height:6px;background:var(--border2);margin-bottom:8px">
+        <div style="height:100%;width:${pct}%;background:${s.color};transition:width .6s"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">
+        <div style="background:var(--bg);border:1px solid var(--border2);padding:5px;text-align:center">
+          <div style="font-family:'Share Tech Mono';font-size:0.75rem;color:var(--neon-g)">${done}</div>
+          <div style="font-size:0.58rem;color:var(--muted)">منجزة</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border2);padding:5px;text-align:center">
+          <div style="font-family:'Share Tech Mono';font-size:0.75rem;color:var(--neon-r)">${total-done}</div>
+          <div style="font-size:0.58rem;color:var(--muted)">متبقية</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border2);padding:5px;text-align:center">
+          <div style="font-family:'Share Tech Mono';font-size:0.75rem;color:var(--neon-y)">${target}</div>
+          <div style="font-size:0.58rem;color:var(--muted)">الهدف</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const overallPct = totalLecs ? Math.round(totalDone/totalLecs*100) : 0;
+  grid.innerHTML = `
+    <div class="an-card" style="border-color:var(--neon-g2);background:var(--neon-g3)">
+      <div class="an-title" style="color:var(--neon-g)">الإجمالي الكلي</div>
+      <div style="font-family:'Orbitron';font-size:2.5rem;font-weight:900;color:var(--neon-g);text-shadow:0 0 20px #00ff8866;margin-bottom:8px">${overallPct}%</div>
+      <div style="height:8px;background:rgba(0,0,0,.3);margin-bottom:8px">
+        <div style="height:100%;width:${overallPct}%;background:var(--neon-g);box-shadow:0 0 10px var(--neon-g);transition:width .8s"></div>
+      </div>
+      <div style="font-family:'Share Tech Mono';font-size:0.75rem;color:var(--neon-g2)">${totalDone} / ${totalLecs} محاضرة</div>
+    </div>
+  ` + cards;
+
+  // Line chart — progress per subject
+  const labels = D.subjects.map(s=>s.name);
+  const values = D.subjects.map(s=>{
+    const total=s.lecs.length;
+    const done=s.lecs.filter((_,i)=>D.done[`${s.id}_${i}`]).length;
+    return total ? Math.round(done/total*100) : 0;
+  });
+  const colors = D.subjects.map(s=>s.color);
+
+  if(progressChart){ progressChart.destroy(); }
+  if(D.subjects.length){
+    progressChart = new Chart(document.getElementById('progressChart'),{
+      type:'bar',
+      data:{
+        labels,
+        datasets:[{
+          data:values,
+          backgroundColor:colors.map(c=>c+'33'),
+          borderColor:colors,
+          borderWidth:1.5,
+          borderRadius:2,
+        }]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'#0a1020',borderColor:'#162236',borderWidth:1,titleColor:'#c8d8f0',bodyColor:'#c8d8f0'}},
+        scales:{
+          x:{grid:{color:'#0f1a2e'},ticks:{color:'#3a5070',font:{size:10}}},
+          y:{min:0,max:100,grid:{color:'#0f1a2e'},ticks:{color:'#3a5070',callback:v=>v+'%'}}
+        }
+      }
+    });
+  }
+}
+
+// ═══════════════════════════════════
+// UTILS
+// ═══════════════════════════════════
+function closeOv(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open')); });
+
+let toastTmr;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTmr); toastTmr=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+function exportData(){
+  const blob = new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'studyOS_backup.json';
+  a.click();
+  toast('✅ تم تصدير النسخة الاحتياطية');
+}
+
+function importData(e){
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const p = JSON.parse(ev.target.result);
+      if(!p||!Array.isArray(p.subjects)) throw 0;
+      if(confirm(`استيراد ${p.subjects.length} مادة؟ سيتم استبدال البيانات الحالية.`)){
+        D = p; save(); renderTracker(); toast('✅ تم الاستيراد بنجاح');
+      }
+    } catch { toast('❌ الملف غير صالح'); }
+  };
+  r.readAsText(file); e.target.value='';
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+async function init(){
+  loadScheduleData();
+  gainXP(0);
+  // Auth listener in firebase section handles data loading
+}
+init();
+</script>
+</body>
+</html>
